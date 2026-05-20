@@ -5,3 +5,8 @@ openpyxl
 python-multipart
 groq
 python-dotenv
+python-jose
+sqlalchemy
+pymysql
+psycopg2-binary
+numpy
