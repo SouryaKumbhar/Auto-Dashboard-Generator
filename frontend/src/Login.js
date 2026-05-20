@@ -10,7 +10,7 @@ export default function Login({ onLogin }) {
   async function go() {
     setLoading(true); setError("");
     try {
-      const r = await axios.post("http://localhost:8000/login", { email, password });
+      const r = await axios.post("https://autodash-backend-oqq2.onrender.com/login", { email, password });
       localStorage.setItem("token", r.data.token);
       localStorage.setItem("user", JSON.stringify(r.data.user));
       onLogin(r.data.user);
