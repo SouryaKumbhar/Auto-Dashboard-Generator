@@ -7,7 +7,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
 
-const api = axios.create({ baseURL: "http://localhost:8000" });
+const api = axios.create({ baseURL:"https://autodash-backend-oqq2.onrender.com"});
 api.interceptors.request.use(cfg => {
   const t = localStorage.getItem("token");
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
