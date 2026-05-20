@@ -7,7 +7,7 @@ export default function UploadModal({ onClose, onData, token }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const api = axios.create({ baseURL:"http://localhost:8000", headers:{ Authorization:`Bearer ${token}` } });
+  const api = axios.create({ baseURL:"https://autodash-backend-oqq2.onrender.com", headers:{ Authorization:`Bearer ${token}` } });
 
   async function uploadFile(e, type) {
     const file = e.target.files[0]; if (!file) return;
