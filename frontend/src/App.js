@@ -187,6 +187,7 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem("user")); } catch { return null; }
   });
   const [token, setToken] = useState(() => localStorage.getItem("token") || "");
+  const [isEditMode, setIsEditMode] = useState(false);
   const [page, setPage] = useState("dashboard");
   const [db, setDb] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -194,6 +195,8 @@ export default function App() {
   const [filters, setFilters] = useState({});
   const [drills, setDrills] = useState([]);
   const [dashName, setDashName] = useState("My Dashboard");
+  const [bgImage, setBgImage] = useState(null);
+  const [customAccent, setCustomAccent] = useState("#6d28d9");
   const [editName, setEditName] = useState(false);
   const [charts, setCharts] = useState([]);
   const [kpis, setKpis] = useState([]);
@@ -285,7 +288,7 @@ export default function App() {
 
   const data = filteredData();
   const T = db?.theme || { sidebar: "#0f0f1a", accent: "#6d28d9", bg: "#f5f5fb" };
-  const accent = T.accent || "#6d28d9";
+  const accent = customAccent || T.accent || "#6d28d9";
 
   const numCols = db ? db.col_info.filter(c => c.type.includes("int") || c.type.includes("float")).map(c => c.name) : [];
   const catCols = db ? db.col_info.filter(c => c.type === "object").map(c => c.name) : [];
@@ -416,10 +419,21 @@ export default function App() {
 
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
             {db && page === "dashboard" && (
-              <button onClick={() => setShowAddVisual(s => !s)}
-                style={{ background: showAddVisual ? "#fef2f2" : "#f5f3ff", color: showAddVisual ? "#dc2626" : "#6d28d9", border: `0.5px solid ${showAddVisual ? "#fecaca" : "#ddd6fe"}`, borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontWeight: 500 }}>
-                {showAddVisual ? "Cancel" : "+ Visual"}
-              </button>
+              <>
+                <button onClick={() => setIsEditMode(s => !s)}
+                  style={{
+                    background: isEditMode ? "#059669" : "#f5f3ff",
+                    color: isEditMode ? "#fff" : "#6d28d9",
+                    border: `0.5px solid ${isEditMode ? "#059669" : "#ddd6fe"}`,
+                    borderRadius:7, padding:"5px 12px", fontSize:12, cursor:"pointer", fontWeight:500
+                }}>
+                {isEditMode ? "✓ Save Layout" : "✏ Edit Layout"}
+                </button>
+                <button onClick={() => setShowAddVisual(s => !s)}
+                  style={{ background: showAddVisual ? "#fef2f2" : "#f5f3ff", color: showAddVisual ? "#dc2626" : "#6d28d9", border: `0.5px solid ${showAddVisual ? "#fecaca" : "#ddd6fe"}`, borderRadius: 7, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontWeight: 500 }}>
+                  {showAddVisual ? "Cancel" : "+ Visual"}
+                </button>
+              </>
             )}
             <button onClick={exportPDF} style={{ background: "#fef2f2", color: "#dc2626", border: "0.5px solid #fecaca", borderRadius: 7, padding: "5px 11px", fontSize: 11, cursor: "pointer", fontWeight: 500 }}>PDF</button>
             <button onClick={exportExcel} style={{ background: "#f0fdf4", color: "#16a34a", border: "0.5px solid #bbf7d0", borderRadius: 7, padding: "5px 11px", fontSize: 11, cursor: "pointer", fontWeight: 500 }}>Excel</button>
@@ -431,7 +445,7 @@ export default function App() {
         </div>
 
         {/* CONTENT AREA */}
-        <div style={{ flex: 1, overflowY: "auto", background: T.bg || "#f5f5fb", backgroundImage: `radial-gradient(circle, ${accent}11 1px, transparent 1px)`, backgroundSize: "22px 22px" }}>
+        <div style={{ flex:1, overflowY:"auto",background: bgImage ? `url(${bgImage}) center/cover` : (T.bg || "#f5f5fb"),backgroundImage: bgImage ? `url(${bgImage})` : `radial-gradient(circle, ${accent}11 1px, transparent 1px)`,backgroundSize: bgImage ? "cover" : "22px 22px"}}>
 
           {/* ==================== DASHBOARD PAGE ==================== */}
           {page === "dashboard" && (
@@ -557,21 +571,21 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* CHARTS GRID */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 12 }}>
-                    {charts.map((chart, i) => (
-                      <ChartWidget
-                        key={chart.id || i}
-                        chart={chart}
-                        data={data}
-                        accent={accent}
-                        numCols={numCols}
-                        catCols={catCols}
-                        onRemove={() => setCharts(p => p.filter((_, j) => j !== i))}
-                        onUpdate={updated => setCharts(p => p.map((c, j) => j === i ? { ...c, ...updated } : c))}
-                      />
-                    ))}
-                  </div>
+                  {/* Charts Grid */}
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(340px, 1fr))", gap:12 }}>
+                   {charts.map((chart, i) => (
+                    <ChartWidget
+                      key={chart.id || i}
+                      chart={chart}
+                      data={data}
+                      accent={accent}
+                      numCols={numCols}
+                      catCols={catCols}
+                      onRemove={() => setCharts(p => p.filter((_, j) => j !== i))}
+                      onUpdate={updated => setCharts(p => p.map((c, j) => j === i ? {...c, ...updated} : c))}
+                    />
+              ))}
+            </div>
 
                   {/* DATA TABLE */}
                   <div style={{ background: "#fff", borderRadius: 12, border: "0.5px solid #eee", overflow: "hidden" }}>
@@ -774,13 +788,104 @@ export default function App() {
                 ))}
               </div>
               <div style={{ background: "#fff", borderRadius: 12, padding: "18px 22px", border: "0.5px solid #eee" }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#111", marginBottom: 10 }}>Dashboard Name</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#111", marginBottom: 10 }}>Dashboard Name</div>{/* Background image upload */}
+<div style={{ background:"#fff", borderRadius:12, padding:"18px 22px", border:"0.5px solid #eee", marginBottom:10 }}>
+  <div style={{ fontSize:13, fontWeight:500, color:"#111", marginBottom:12 }}>Background Image</div>
+  {bgImage && (
+    <div style={{ marginBottom:10 }}>
+      <img src={bgImage} alt="bg" style={{ width:"100%", height:80, objectFit:"cover", borderRadius:8 }}/>
+      <button onClick={() => setBgImage(null)} style={{ fontSize:11, color:"#dc2626", background:"none", border:"none", cursor:"pointer", marginTop:4 }}>Remove</button>
+    </div>
+  )}
+  <label style={{ background:"#f5f3ff", color:"#6d28d9", padding:"7px 14px", borderRadius:8, fontSize:12, cursor:"pointer", fontWeight:500 }}>
+    Upload Background Image
+    <input type="file" accept="image/*" style={{ display:"none" }} onChange={e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => setBgImage(ev.target.result);
+      reader.readAsDataURL(file);
+    }}/>
+  </label>
+</div>
+
+{/* Color theme picker */}
+<div style={{ background:"#fff", borderRadius:12, padding:"18px 22px", border:"0.5px solid #eee", marginBottom:10 }}>
+  <div style={{ fontSize:13, fontWeight:500, color:"#111", marginBottom:12 }}>Accent Color</div>
+  <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
+    {["#6d28d9","#0891b2","#059669","#d97706","#dc2626","#db2777","#0284c7","#7c3aed"].map(color => (
+      <div key={color} onClick={() => setCustomAccent(color)}
+        style={{
+          width:32, height:32, borderRadius:"50%", background:color,
+          cursor:"pointer",
+          border: customAccent === color ? "3px solid #111" : "2px solid transparent"
+        }}/>
+    ))}
+    <input type="color" value={customAccent}
+      onChange={e => setCustomAccent(e.target.value)}
+      style={{ width:32, height:32, borderRadius:"50%", border:"none", cursor:"pointer", padding:0 }}
+      title="Custom color"/>
+  </div>
+</div>
                 <input value={dashName} onChange={e => setDashName(e.target.value)}
                   style={{ width: "100%", padding: "9px 12px", border: "0.5px solid #eee", borderRadius: 8, fontSize: 13, outline: "none", marginBottom: 8 }} />
                 <div style={{ fontSize: 11, color: "#9ca3af" }}>You can also click the title in the top bar to rename directly</div>
               </div>
             </div>
           )}
+          {/* BOTTOM PAGE TABS — Power BI style */}
+{db && (
+  <div style={{
+    height:38, background:"#fff", borderTop:"0.5px solid #eee",
+    display:"flex", alignItems:"center", padding:"0 8px", gap:2, flexShrink:0
+  }}>
+    {pages.map((pg, i) => (
+      <div key={i}
+        onDoubleClick={() => {
+          const newName = prompt("Rename page:", pg);
+          if (newName) setPages(prev => prev.map((p, j) => j === i ? newName : p));
+        }}
+        onClick={() => setActivePage(i)}
+        style={{
+          padding:"4px 16px", borderRadius:"6px 6px 0 0", cursor:"pointer",
+          fontSize:12, fontWeight:activePage === i ? 600 : 400,
+          background:activePage === i ? accent : "transparent",
+          color:activePage === i ? "#fff" : "#6b7280",
+          border:`0.5px solid ${activePage === i ? accent : "#eee"}`,
+          borderBottom:"none", userSelect:"none"
+        }}>
+        {pg}
+      </div>
+    ))}
+
+    {/* Add page button */}
+    <button
+      onClick={() => {
+        const n = `Page ${pages.length + 1}`;
+        setPages(p => [...p, n]);
+        setActivePage(pages.length);
+      }}
+      style={{
+        padding:"4px 10px", borderRadius:"6px 6px 0 0", cursor:"pointer",
+        fontSize:14, background:"transparent", border:"0.5px dashed #d1d5db",
+        borderBottom:"none", color:"#9ca3af", lineHeight:1
+      }}>+</button>
+
+    {/* Delete current page */}
+    {pages.length > 1 && (
+      <button
+        onClick={() => {
+          setPages(p => p.filter((_, i) => i !== activePage));
+          setActivePage(0);
+        }}
+        style={{
+          marginLeft:"auto", padding:"4px 10px", borderRadius:6, cursor:"pointer",
+          fontSize:11, background:"#fef2f2", border:"0.5px solid #fecaca",
+          color:"#dc2626"
+        }}>Delete Page</button>
+    )}
+  </div>
+)}
 
         </div>
       </div>

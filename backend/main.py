@@ -278,3 +278,54 @@ async def connect_db(conn: DBConn):
         return finalize(df, f"{conn.db_type}:{conn.database}", conn.db_type)
     except Exception as e:
         raise HTTPException(500, str(e))
+
+        class ChatRequest(BaseModel):
+    message: str
+    columns: list = []
+    domain: str = "general"
+    context: str = "dashboard"
+
+@app.post("/ai-chat")
+async def ai_chat(req: ChatRequest, user=Depends(auth)):
+    prompt = f"""
+You are a dashboard AI assistant. The user has a {req.domain} dashboard with columns: {req.columns}
+
+User message: "{req.message}"
+
+Respond with a JSON object:
+{{
+  "reply": "friendly response explaining what you will do",
+  "action": {{
+    "type": "add_widget|remove_widget|change_theme|add_filter|update_kpi|none",
+    "widget_type": "bar|line|area|pie|donut|kpi|gauge|table|scatter",
+    "title": "chart title",
+    "x_column": "column name or null",
+    "y_column": "column name or null",
+    "theme": "dark|light|finance|healthcare|retail|hr|tech or null",
+    "filter_column": "column name or null",
+    "widget_id": "id to remove or null"
+  }}
+}}
+
+Rules:
+- Only use columns from: {req.columns}
+- If user says add chart/visual/graph -> type is add_widget
+- If user says remove/delete -> type is remove_widget
+- If user says theme/dark/light -> type is change_theme
+- If user says filter/slicer -> type is add_filter
+- action can be null if just answering a question
+Return ONLY JSON.
+"""
+    try:
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role":"user","content":prompt}],
+            max_tokens=500
+        )
+        raw = resp.choices[0].message.content.strip()
+        if "```" in raw:
+            raw = "\n".join(l for l in raw.split("\n") if not l.strip().startswith("```"))
+        result = json.loads(raw[raw.find("{"):raw.rfind("}")+1])
+        return result
+    except Exception as e:
+        return {"reply": "I understand! Let me help you with that.", "action": None}
