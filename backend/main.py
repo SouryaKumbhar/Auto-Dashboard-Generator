@@ -1,4 +1,9 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from typing import Dict, Any, List
+from pydantic import BaseModel
+from engines.layout_engine import generate_layout
+from engines.semantic_engine import detect_business_context
+from engines.insight_engine import generate_insights
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
@@ -166,37 +171,68 @@ Return ONLY JSON:
     except:
         return {"summary":"Data loaded successfully.","trend":"Analysis complete.","insight1":"Review KPI cards for key metrics.","insight2":"Use filters to explore data.","recommendation":"Examine the charts for patterns.","anomaly":"No anomalies detected.","performance":"Data is ready for analysis."}
 
-def finalize(df, filename, source_type="excel"):
-    col_info = []
-    for col in df.columns:
-        try:
-            samples = [cv(s) for s in df[col].dropna().head(5).tolist()]
-            col_info.append({"name":str(col),"type":str(df[col].dtype),"sample":samples,"unique":int(df[col].nunique())})
-        except:
-            col_info.append({"name":str(col),"type":"unknown","sample":[],"unique":0})
+def finalize(df, config, insights, domain, theme, filename, source_type):
 
-    domain = detect_domain(df.columns.tolist(), df.head(3).to_dict(orient='records'))
-    theme = DOMAIN_THEMES[domain]
-    config = build_ai_config(df, col_info, domain)
-    insights = build_insights(df, col_info, domain, config)
+    def cv(v):
+        try:
+            if pd.isna(v):
+                return None
+        except:
+            pass
+
+        if isinstance(v, (pd.Timestamp, datetime)):
+            return str(v)
+
+        try:
+            return float(v) if isinstance(v, np.floating) else int(v) if isinstance(v, np.integer) else v
+        except:
+            return str(v)
+
+    col_info = {}
+
+    for c in df.columns:
+
+        s = df[c]
+
+        col_info[c] = {
+            "dtype": str(s.dtype),
+            "nulls": int(s.isna().sum()),
+            "unique": int(s.nunique())
+        }
 
     num_stats = {}
-    for col in df.columns:
-        if pd.api.types.is_numeric_dtype(df[col]):
-            d = df[col].dropna()
-            if len(d) > 0:
-                num_stats[col] = {
-                    "sum": round(float(d.sum()),2),
-                    "mean": round(float(d.mean()),2),
-                    "max": round(float(d.max()),2),
-                    "min": round(float(d.min()),2),
-                    "count": int(len(d))
-                }
 
-    records = [{str(col): cv(row[col]) for col in df.columns} for _, row in df.iterrows()]
+    for c in df.select_dtypes(include=np.number).columns:
+
+        d = df[c].dropna()
+
+        if len(d):
+
+            num_stats[c] = {
+                "sum": round(float(d.sum()), 2),
+                "mean": round(float(d.mean()), 2),
+                "max": round(float(d.max()), 2),
+                "min": round(float(d.min()), 2),
+                "count": int(len(d))
+            }
+
+    records = [
+        {str(col): cv(row[col]) for col in df.columns}
+        for _, row in df.iterrows()
+    ]
+
+    layout = generate_layout(config["charts"])
+
+    business_context = detect_business_context(df.columns.tolist())
+
+    ai_extra_insights = generate_insights(config["charts"])
 
     return {
+
         "config": config,
+        "layout": layout,
+        "business_context": business_context,
+        "ai_extra_insights": ai_extra_insights,
         "data": records,
         "columns": list(df.columns),
         "col_info": col_info,
@@ -208,6 +244,7 @@ def finalize(df, filename, source_type="excel"):
         "row_count": len(df),
         "col_count": len(df.columns),
         "num_stats": num_stats
+
     }
 
 class LoginReq(BaseModel):
@@ -233,60 +270,170 @@ def login(req: LoginReq):
 
 @app.post("/upload")
 async def upload_excel(file: UploadFile = File(...)):
+
     try:
+
         contents = await file.read()
+
         df = pd.read_excel(io.BytesIO(contents))
+
         df = smart_transform(df)
-        return finalize(df, file.filename, "excel")
+
+        col_info = [
+            {"name": c, "type": str(df[c].dtype)}
+            for c in df.columns
+        ]
+
+        domain = detect_domain(df.columns.tolist(), [])
+
+        theme = DOMAIN_THEMES.get(domain, DOMAIN_THEMES["general"])
+
+        config = build_ai_config(df, col_info, domain)
+
+        insights = build_insights(df, col_info, domain, config)
+
+        return finalize(
+            df,
+            config,
+            insights,
+            domain,
+            theme,
+            file.filename,
+            "excel"
+        )
+
     except Exception as e:
+
         raise HTTPException(400, str(e))
 
 @app.post("/upload-csv")
 async def upload_csv(file: UploadFile = File(...)):
+
     try:
+
         contents = await file.read()
-        try: df = pd.read_csv(io.BytesIO(contents), encoding='utf-8')
-        except: df = pd.read_csv(io.BytesIO(contents), encoding='latin-1')
+
+        try:
+            df = pd.read_csv(io.BytesIO(contents), encoding='utf-8')
+
+        except:
+            df = pd.read_csv(io.BytesIO(contents), encoding='latin-1')
+
         df = smart_transform(df)
-        return finalize(df, file.filename, "csv")
+
+        col_info = [
+            {"name": c, "type": str(df[c].dtype)}
+            for c in df.columns
+        ]
+
+        domain = detect_domain(df.columns.tolist(), [])
+
+        theme = DOMAIN_THEMES.get(domain, DOMAIN_THEMES["general"])
+
+        config = build_ai_config(df, col_info, domain)
+
+        insights = build_insights(df, col_info, domain, config)
+
+        return finalize(
+            df,
+            config,
+            insights,
+            domain,
+            theme,
+            file.filename,
+            "csv"
+        )
+
     except Exception as e:
+
         raise HTTPException(400, str(e))
 
 @app.post("/connect-db")
 async def connect_db(conn: DBConn):
+
     try:
+
         from sqlalchemy import create_engine, text
+
         if conn.db_type == "mysql":
+
             url = f"mysql+pymysql://{conn.username}:{conn.password}@{conn.host}:{conn.port}/{conn.database}"
+
         elif conn.db_type == "postgresql":
+
             url = f"postgresql+psycopg2://{conn.username}:{conn.password}@{conn.host}:{conn.port}/{conn.database}"
 
         elif conn.db_type == "sqlserver":
-            url = (
-        f"mssql+pyodbc://{conn.server}/{conn.database}"
-        f"?driver=ODBC+Driver+17+for+SQL+Server"
-        f"&trusted_connection=yes"
-        f"&TrustServerCertificate=yes"
 
-)
+            url = (
+                f"mssql+pyodbc://{conn.server}/{conn.database}"
+                f"?driver=ODBC+Driver+17+for+SQL+Server"
+                f"&trusted_connection=yes"
+                f"&TrustServerCertificate=yes"
+            )
+
         else:
-            raise HTTPException(400,"Unsupported DB")
+
+            raise HTTPException(400, "Unsupported DB")
+
         engine = create_engine(url)
+
         with engine.connect() as c:
+
             df = pd.read_sql(text(conn.query), c)
+
         df = smart_transform(df)
-        return finalize(df, f"{conn.db_type}:{conn.database}", conn.db_type)
+
+        col_info = [
+            {"name": c, "type": str(df[c].dtype)}
+            for c in df.columns
+        ]
+
+        domain = detect_domain(df.columns.tolist(), [])
+
+        theme = DOMAIN_THEMES.get(domain, DOMAIN_THEMES["general"])
+
+        config = build_ai_config(df, col_info, domain)
+
+        insights = build_insights(df, col_info, domain, config)
+
+        return finalize(
+            df,
+            config,
+            insights,
+            domain,
+            theme,
+            f"{conn.db_type}:{conn.database}",
+            conn.db_type
+        )
+
     except Exception as e:
+
         raise HTTPException(500, str(e))
 
-        class ChatRequest(BaseModel):
-    message: str
-    columns: list = []
-    domain: str = "general"
-    context: str = "dashboard"
-
 @app.post("/ai-chat")
-async def ai_chat(req: ChatRequest, user=Depends(auth)):
+async def ai_chat(request: Request):
+
+    body = await request.json()
+
+    message = body.get("message", "")
+    columns = body.get("columns", [])
+    domain = body.get("domain", "general")
+    context = body.get("context", "dashboard")
+
+    prompt = f"""
+    You are a dashboard AI assistant.
+
+    User message:
+    {message}
+
+    Dashboard columns:
+    {columns}
+
+    Domain:
+    {domain}
+    """
+
     prompt = f"""
 You are a dashboard AI assistant. The user has a {req.domain} dashboard with columns: {req.columns}
 
@@ -329,3 +476,71 @@ Return ONLY JSON.
         return result
     except Exception as e:
         return {"reply": "I understand! Let me help you with that.", "action": None}
+class WhatIfRequest(BaseModel):
+    message: str
+    columns: List[str] = []
+    current_stats: Dict[str, Any] = {}
+    domain: str = "general"
+
+
+@app.post("/whatif")
+async def what_if_analysis(req: WhatIfRequest):
+
+    prompt = f"""
+You are a business analyst. User has a {req.domain} dataset.
+Current stats: {json.dumps(req.current_stats)}
+Columns: {req.columns}
+
+User scenario: "{req.message}"
+
+Analyze and return ONLY JSON:
+{{
+  "scenario_title": "short title of the scenario",
+  "explanation": "2 sentence explanation of what this scenario means",
+  "adjustments": {{
+    "column_name": percentage_change_as_decimal
+  }},
+  "kpi_impacts": [
+    {{"label": "kpi label", "current": 1000, "simulated": 1200, "change_pct": 20.0, "positive": true}}
+  ],
+  "recommendation": "one business recommendation based on this scenario",
+  "risk": "one risk to consider"
+}}
+
+Rules:
+- adjustments: use actual column names from {req.columns}
+- percentage_change: 0.20 means +20%, -0.15 means -15%
+- kpi_impacts: show top 4 most impacted KPIs
+- Return ONLY JSON
+"""
+
+    try:
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800
+        )
+
+        raw = resp.choices[0].message.content.strip()
+
+        if "```" in raw:
+            raw = "\n".join(
+                l for l in raw.split("\n")
+                if not l.strip().startswith("```")
+            )
+
+        result = json.loads(
+            raw[raw.find("{"):raw.rfind("}") + 1]
+        )
+
+        return result
+
+    except Exception as e:
+        return {
+            "scenario_title": "Scenario Analysis",
+            "explanation": "Analyzing your scenario based on current data.",
+            "adjustments": {},
+            "kpi_impacts": [],
+            "recommendation": "Review the simulated values carefully.",
+            "risk": "Ensure assumptions are realistic."
+        }
