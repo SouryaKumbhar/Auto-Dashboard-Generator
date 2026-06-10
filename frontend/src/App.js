@@ -337,8 +337,8 @@ function AIChatbot({ db, accent, palette, onCommand }) {
     try {
       const token = localStorage.getItem("token");
       const columns = db?.columns || [];
-      const numCols = db?.col_info?.filter(c=>c.type.includes("int")||c.type.includes("float")).map(c=>c.name) || [];
-      const catCols = db?.col_info?.filter(c=>c.type==="object").map(c=>c.name) || [];
+      const numCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype?.includes("int")||v.dtype?.includes("float")).map(([k])=>k) : [];
+      const catCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype==="object").map(([k])=>k) : [];
 
       const res = await api.post("/ai-chat", {
         message: msg,
@@ -512,8 +512,8 @@ export default function App() {
   }
 
   const data = filteredData();
-  const numCols = db ? db.col_info.filter(c=>c.type.includes("int")||c.type.includes("float")).map(c=>c.name) : [];
-  const catCols = db ? db.col_info.filter(c=>c.type==="object").map(c=>c.name) : [];
+  const numCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype?.includes("int")||v.dtype?.includes("float")).map(([k])=>k) : [];
+  const catCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype==="object").map(([k])=>k) : [];
   const filterCols = db?.config?.filters || catCols.slice(0,4);
   const tableCols = db?.config?.table_columns || db?.columns?.slice(0,6) || [];
 
