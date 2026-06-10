@@ -21,7 +21,6 @@ export default function WhatIf({ db, data, kpis, accent, palette: P, onClose }) 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
-  const [simData, setSimData] = useState(null);
 
   useEffect(() => {
   axios.get(`${BACKEND}/`).catch(() => {});
@@ -75,7 +74,6 @@ export default function WhatIf({ db, data, kpis, accent, palette: P, onClose }) 
         });
         return newRow;
       });
-      setSimData(simulated);
     }
 
   } catch (err) {
