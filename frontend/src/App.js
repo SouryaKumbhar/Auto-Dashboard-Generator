@@ -54,7 +54,8 @@ function computeKPI(kpi, data) {
 }
 
 function KPICard({ kpi, data, palette, onRemove, index }) {
-  const { value, raw } = computeKPI(kpi, data);
+  // eslint-disable-next-line no-unused-vars
+  const { value } = computeKPI(kpi, data);
   const colors = [palette.accent,"#2563EB","#059669","#D97706","#DC2626","#DB2777"];
   const color = kpi.color || colors[index % colors.length];
   const icons = ["📈","💰","👥","🎯","⚡","📊","🔥","💎"];
