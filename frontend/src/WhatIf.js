@@ -65,6 +65,7 @@ export default function WhatIf({ db, data, kpis, accent, palette: P, onClose }) 
     setResult(res.data);
 
     if (res.data.adjustments && Object.keys(res.data.adjustments).length > 0) {
+      // eslint-disable-next-line no-unused-vars
       const simulated = (data || []).map(row => {
         const newRow = { ...row };
         Object.entries(res.data.adjustments).forEach(([col, change]) => {
