@@ -1,5 +1,5 @@
 import WhatIf from "./WhatIf";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import axios from "axios";
 import Login from "./Login";
 import UploadModal from "./UploadModal";
@@ -335,7 +335,6 @@ function AIChatbot({ db, accent, palette, onCommand }) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
       const columns = db?.columns || [];
       const numCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype?.includes("int")||v.dtype?.includes("float")).map(([k])=>k) : [];
       const catCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype==="object").map(([k])=>k) : [];
@@ -437,8 +436,6 @@ export default function App() {
   const [charts, setCharts] = useState([]);
   const [kpis, setKpis] = useState([]);
   const [sources, setSources] = useState([]);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [searchText, setSearchText] = useState("");
   const [paletteKey, setPaletteKey] = useState("default");
   const [pages, setPages] = useState(["Page 1"]);
