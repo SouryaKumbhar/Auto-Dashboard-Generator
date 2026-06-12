@@ -5,7 +5,7 @@ import {
   Tooltip, Legend, ResponsiveContainer, Cell
 } from "recharts";
 
-const BACKEND = "http://localhost:8000" //"https://autodash-backend-oqq2.onrender.com";
+const BACKEND = "https://autodash-backend-oqq2.onrender.com"   //"http://localhost:8000";
 
 const QUICK_SCENARIOS = [
   "What if revenue increases by 20%?",
