@@ -419,25 +419,11 @@ async def ai_chat(request: Request):
     message = body.get("message", "")
     columns = body.get("columns", [])
     domain = body.get("domain", "general")
-    context = body.get("context", "dashboard")
 
     prompt = f"""
-    You are a dashboard AI assistant.
+You are a dashboard AI assistant. The user has a {domain} dashboard with columns: {columns}
 
-    User message:
-    {message}
-
-    Dashboard columns:
-    {columns}
-
-    Domain:
-    {domain}
-    """
-
-    prompt = f"""
-You are a dashboard AI assistant. The user has a {req.domain} dashboard with columns: {req.columns}
-
-User message: "{req.message}"
+User message: "{message}"
 
 Respond with a JSON object:
 {{
@@ -455,7 +441,7 @@ Respond with a JSON object:
 }}
 
 Rules:
-- Only use columns from: {req.columns}
+- Only use columns from: {columns}
 - If user says add chart/visual/graph -> type is add_widget
 - If user says remove/delete -> type is remove_widget
 - If user says theme/dark/light -> type is change_theme
@@ -467,7 +453,8 @@ Return ONLY JSON.
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role":"user","content":prompt}],
-            max_tokens=500
+            max_tokens=500,
+            temperature=0
         )
         raw = resp.choices[0].message.content.strip()
         if "```" in raw:
@@ -476,11 +463,6 @@ Return ONLY JSON.
         return result
     except Exception as e:
         return {"reply": "I understand! Let me help you with that.", "action": None}
-class WhatIfRequest(BaseModel):
-    message: str
-    columns: List[str] = []
-    current_stats: Dict[str, Any] = {}
-    domain: str = "general"
 
 
 @app.post("/whatif")
