@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
 from engines.layout_engine import generate_layout
 from engines.semantic_engine import detect_business_context
@@ -464,7 +464,12 @@ Return ONLY JSON.
     except Exception as e:
         return {"reply": "I understand! Let me help you with that.", "action": None}
 
-
+class WhatIfRequest(BaseModel):
+    message: str
+    columns: Optional[List[str]] = []
+    current_stats: Optional[Dict[str, Any]] = {}
+    domain: Optional[str] = "general"
+    
 @app.post("/whatif")
 async def what_if_analysis(req: WhatIfRequest):
 
