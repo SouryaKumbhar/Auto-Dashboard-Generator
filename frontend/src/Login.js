@@ -11,7 +11,6 @@ function AnimatedBackground() {
     const ctx = canvas.getContext("2d");
     let animId;
     let particles = [];
-    let lines = [];
     let time = 0;
 
     function resize() {
