@@ -7,9 +7,8 @@ import UploadModal from "./UploadModal";
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   PieChart, Pie, Cell, ScatterChart, Scatter,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList,
-  ResponsiveContainer, Treemap, ComposedChart
+  XAxis, YAxis, CartesianGrid, Tooltip, LabelList,
+  ResponsiveContainer
 } from "recharts";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
@@ -25,7 +24,6 @@ const PALETTES = {
   default: { name:"Default", sidebar:"#06090D", accent:"#7C3AED", accentLight:"#1e1040", bg:"#0A0B18", card:"#0F1020", text:"#F0F2FF", sub:"#6B7A99", border:"#1E2340" },
 };
 const P_DARK = PALETTES.default;
-const CHART_COLORS = ["#7C3AED","#19B6FF","#10B981","#F59E0B","#EF4444","#EC4899","#06B6D4","#84CC16"];
 function computeKPI(kpi, data) {
   const vals = data.map(r => Number(r[kpi.column])).filter(v => !isNaN(v) && isFinite(v));
   if (!vals.length) return { value: "—", raw: 0 };
@@ -108,14 +106,9 @@ function smartType(chart, index, data) {
 
   const sample = data.slice(0, 30);
   const xVals = sample.map(r => r[chart.x_column]);
-  const yVals = sample.map(r => r[chart.y_column]);
 
   // Check if x is numeric (needed for scatter)
   const xIsNumeric = xVals.filter(v => v != null && v !== "").every(v => !isNaN(Number(v)));
-  // Check if y is numeric (needed for donut aggregation detection)
-  const yIsNumeric = yVals.filter(v => v != null && v !== "").some(v => !isNaN(Number(v)) && Number(v) !== 0);
-  // Check if x has few unique values (good for donut grouping)
-  const xUnique = new Set(xVals.map(v => String(v))).size;
 
   if (requested === "scatter") {
     // Scatter needs both axes numeric — if x is categorical, use bar instead
@@ -170,7 +163,6 @@ function ChartCard({ chart, data, palette, onRemove, index }) {
     const allRows = (data || []);
     const sample30 = allRows.slice(0, 30);
     const xVals = sample30.map(r => r[chart.x_column]);
-    const yVals = sample30.map(r => r[chart.y_column]);
     const xIsNumeric = xVals.filter(v => v != null && v !== "").every(v => !isNaN(Number(v)));
     const looksLikeTime = (col) => {
       const lower = String(col).toLowerCase();
