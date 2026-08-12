@@ -1,3 +1,4 @@
+
 import WhatIf from "./WhatIf";
 import { useState, useRef } from "react";
 import axios from "axios";
@@ -13,16 +14,13 @@ import {
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import * as XLSX from "xlsx";
-
 const BACKEND = "https://autodash-backend-oqq2.onrender.com";
-
 const api = axios.create({ baseURL: BACKEND });
 api.interceptors.request.use(cfg => {
   const t = localStorage.getItem("token");
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });
-
 const PALETTES = {
   default:  { name:"Default",    sidebar:"#111827", accent:"#7C3AED", accentLight:"#EDE9FE", bg:"#F9FAFB", card:"#FFFFFF", text:"#111827", sub:"#6B7280", border:"#E5E7EB" },
   finance:  { name:"Finance",    sidebar:"#0F172A", accent:"#2563EB", accentLight:"#DBEAFE", bg:"#F0F4FF", card:"#FFFFFF", text:"#0F172A", sub:"#64748B", border:"#E2E8F0" },
@@ -30,9 +28,7 @@ const PALETTES = {
   healthcare:{ name:"Healthcare",sidebar:"#064E3B", accent:"#059669", accentLight:"#D1FAE5", bg:"#F0FDF4", card:"#FFFFFF", text:"#064E3B", sub:"#6B7280", border:"#D1FAE5" },
   retail:   { name:"Retail",     sidebar:"#431407", accent:"#EA580C", accentLight:"#FED7AA", bg:"#FFF7ED", card:"#FFFFFF", text:"#431407", sub:"#78716C", border:"#FED7AA" },
 };
-
 const CHART_COLORS = ["#7C3AED","#2563EB","#059669","#D97706","#DC2626","#DB2777","#0891B2","#65A30D"];
-
 function computeKPI(kpi, data) {
   const vals = data.map(r => Number(r[kpi.column])).filter(v => !isNaN(v) && isFinite(v));
   if (!vals.length) return { value: "—", raw: 0 };
@@ -52,7 +48,6 @@ function computeKPI(kpi, data) {
     : Math.round(v).toLocaleString("en-IN");
   return { value: `${kpi.prefix||""}${fmt}${kpi.suffix||""}`, raw: v };
 }
-
 function KPICard({ kpi, data, palette, onRemove, index }) {
   // eslint-disable-next-line no-unused-vars
   const { value } = computeKPI(kpi, data);
@@ -60,7 +55,6 @@ function KPICard({ kpi, data, palette, onRemove, index }) {
   const color = kpi.color || colors[index % colors.length];
   const icons = ["📈","💰","👥","🎯","⚡","📊","🔥","💎"];
   const icon = icons[index % icons.length];
-
   return (
     <div style={{
       background: palette.card,
@@ -75,21 +69,17 @@ function KPICard({ kpi, data, palette, onRemove, index }) {
     }}>
       {/* Top colored bar */}
       <div style={{ position:"absolute", top:0, left:0, right:0, height:4, background:`linear-gradient(90deg, ${color}, ${color}88)` }}/>
-
       {/* Remove button */}
       {onRemove && (
         <button onClick={onRemove} style={{ position:"absolute", top:10, right:10, background:"none", border:"none", color:palette.sub, cursor:"pointer", fontSize:14, opacity:0.5 }}>✕</button>
       )}
-
       {/* Icon + label */}
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, marginTop:4 }}>
         <div style={{ width:32, height:32, borderRadius:8, background:`${color}18`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>{icon}</div>
         <div style={{ fontSize:11, color:palette.sub, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.5px" }}>{kpi.label}</div>
       </div>
-
       {/* Value */}
       <div style={{ fontSize:28, fontWeight:700, color:palette.text, letterSpacing:"-0.5px", marginBottom:8 }}>{value}</div>
-
       {/* Trend indicator */}
       <div style={{ display:"flex", alignItems:"center", gap:6 }}>
         <span style={{ fontSize:11, color:"#059669", background:"#D1FAE5", padding:"2px 8px", borderRadius:20, fontWeight:600 }}>▲ Live</span>
@@ -98,18 +88,15 @@ function KPICard({ kpi, data, palette, onRemove, index }) {
     </div>
   );
 }
-
 function ChartCard({ chart, data, palette, onRemove }) {
   const [type, setType] = useState(chart.type || "bar");
   const [editTitle, setEditTitle] = useState(false);
   const [title, setTitle] = useState(chart.title);
   const d = (data||[]).slice(0, 60);
   const accent = palette.accent;
-
   const TYPES = ["bar","line","area","pie","donut","scatter","radar","treemap","composed","table"];
   const ax = { tick:{ fontSize:10, fill:palette.sub }, axisLine:{ stroke:palette.border }, tickLine:false };
   const tp = { contentStyle:{ borderRadius:10, border:`1px solid ${palette.border}`, fontSize:11, background:palette.card, color:palette.text, boxShadow:"0 4px 20px rgba(0,0,0,0.1)" } };
-
   function render() {
     if (!chart.x_column || !chart.y_column) return (
       <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:8, color:palette.sub }}>
@@ -117,7 +104,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         <span style={{ fontSize:12 }}>No columns configured</span>
       </div>
     );
-
     if (type === "table") return (
       <div style={{ overflowY:"auto", height:"100%" }}>
         <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
@@ -136,7 +122,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </table>
       </div>
     );
-
     if (type === "treemap") return (
       <ResponsiveContainer width="100%" height="100%">
         <Treemap data={d.map(r=>({ name:String(r[chart.x_column]), size:Math.abs(Number(r[chart.y_column]))||1 }))} dataKey="size" stroke={palette.card} fill={accent}>
@@ -144,7 +129,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </Treemap>
       </ResponsiveContainer>
     );
-
     if (type === "radar") return (
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={d.slice(0,8)}>
@@ -155,7 +139,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </RadarChart>
       </ResponsiveContainer>
     );
-
     if (type === "pie" || type === "donut") return (
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
@@ -169,7 +152,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </PieChart>
       </ResponsiveContainer>
     );
-
     if (type === "scatter") return (
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart><CartesianGrid strokeDasharray="3 3" stroke={`${palette.border}80`}/>
@@ -178,7 +160,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </ScatterChart>
       </ResponsiveContainer>
     );
-
     if (type === "composed") return (
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={d}>
@@ -190,7 +171,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </ComposedChart>
       </ResponsiveContainer>
     );
-
     if (type === "area") return (
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={d}>
@@ -205,7 +185,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </AreaChart>
       </ResponsiveContainer>
     );
-
     if (type === "line") return (
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={d}>
@@ -216,7 +195,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </LineChart>
       </ResponsiveContainer>
     );
-
     return (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={d}>
@@ -230,7 +208,6 @@ function ChartCard({ chart, data, palette, onRemove }) {
       </ResponsiveContainer>
     );
   }
-
   return (
     <div style={{ background:palette.card, borderRadius:16, border:`1px solid ${palette.border}`, overflow:"hidden", display:"flex", flexDirection:"column", height:"100%" }}>
       {/* Chart Header */}
@@ -247,13 +224,11 @@ function ChartCard({ chart, data, palette, onRemove }) {
         </select>
         {onRemove && <button onClick={onRemove} style={{ background:"none", border:"none", color:palette.sub, cursor:"pointer", fontSize:14, opacity:0.5, padding:0 }}>✕</button>}
       </div>
-
       {/* Chart Body */}
       <div style={{ flex:1, padding:"8px 8px 12px", minHeight:0 }}>{render()}</div>
     </div>
   );
 }
-
 function AddVisualPanel({ onAdd, cols, numCols, catCols, palette, onClose }) {
   const [type, setType] = useState("bar");
   const [xCol, setXCol] = useState(catCols[0]||cols[0]||"");
@@ -262,16 +237,13 @@ function AddVisualPanel({ onAdd, cols, numCols, catCols, palette, onClose }) {
   const [size, setSize] = useState("medium");
   const allCols = [...new Set([...catCols,...numCols])];
   const accent = palette.accent;
-
   const CHART_TYPES = [
     {v:"bar",l:"📊 Bar"},{v:"line",l:"📈 Line"},{v:"area",l:"🌊 Area"},
     {v:"pie",l:"🥧 Pie"},{v:"donut",l:"⭕ Donut"},{v:"scatter",l:"✦ Scatter"},
     {v:"radar",l:"🕸 Radar"},{v:"treemap",l:"🗂 Treemap"},{v:"composed",l:"📉 Composed"},{v:"table",l:"📋 Table"}
   ];
-
   const inp = { width:"100%", padding:"9px 12px", borderRadius:10, border:`1px solid ${palette.border}`, fontSize:13, outline:"none", background:palette.bg, color:palette.text, marginBottom:12 };
   const lbl = { fontSize:11, color:palette.sub, display:"block", marginBottom:5, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.4px" };
-
   return (
     <div style={{ background:palette.card, borderRadius:16, border:`2px solid ${accent}`, padding:20, marginBottom:16 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -315,40 +287,33 @@ function AddVisualPanel({ onAdd, cols, numCols, catCols, palette, onClose }) {
     </div>
   );
 }
-
 function AIChatbot({ db, accent, palette, onCommand }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([{ role:"ai", text:"Hi! I'm your AI assistant. Try: 'Add a bar chart' or 'Change theme to dark'" }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
-
   const quickCommands = [
     "Add a bar chart", "Add a line chart", "Add a pie chart",
     "Change theme to dark", "Change theme to finance", "Add a KPI card"
   ];
-
   async function send(text) {
     const msg = text || input.trim();
     if (!msg) return;
     setInput("");
     setMsgs(p=>[...p, { role:"user", text:msg }]);
     setLoading(true);
-
     try {
       const columns = db?.columns || [];
       const numCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype?.includes("int")||v.dtype?.includes("float")).map(([k])=>k) : [];
       const catCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype==="object").map(([k])=>k) : [];
-
       const res = await api.post("/ai-chat", {
         message: msg,
         columns,
         domain: db?.domain || "general"
       });
-
       const reply = res.data.reply || "Done!";
       const action = res.data.action;
-
       setMsgs(p=>[...p, { role:"ai", text:reply }]);
       if (action && onCommand) onCommand(action, { numCols, catCols });
     } catch {
@@ -357,7 +322,6 @@ function AIChatbot({ db, accent, palette, onCommand }) {
     setLoading(false);
     setTimeout(()=>bottomRef.current?.scrollIntoView({ behavior:"smooth" }), 100);
   }
-
   return (
     <>
       <button onClick={()=>setOpen(o=>!o)} style={{
@@ -368,7 +332,6 @@ function AIChatbot({ db, accent, palette, onCommand }) {
       }}>
         {open ? "✕" : "🤖"}
       </button>
-
       {open && (
         <div style={{
           position:"fixed", bottom:96, right:28, zIndex:999,
@@ -380,7 +343,6 @@ function AIChatbot({ db, accent, palette, onCommand }) {
             <div style={{ fontSize:14, fontWeight:700 }}>🤖 AI Dashboard Assistant</div>
             <div style={{ fontSize:11, opacity:0.8, marginTop:2 }}>Ask me to modify your dashboard</div>
           </div>
-
           <div style={{ flex:1, overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:8 }}>
             {msgs.map((m,i) => (
               <div key={i} style={{ alignSelf:m.role==="user"?"flex-end":"flex-start", maxWidth:"88%" }}>
@@ -398,7 +360,6 @@ function AIChatbot({ db, accent, palette, onCommand }) {
             )}
             <div ref={bottomRef}/>
           </div>
-
           <div style={{ padding:"8px 12px", borderTop:`1px solid ${palette.border}`, flexShrink:0 }}>
             <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginBottom:8 }}>
               {quickCommands.slice(0,3).map(cmd => (
@@ -421,7 +382,6 @@ function AIChatbot({ db, accent, palette, onCommand }) {
     </>
   );
 }
-
 export default function App() {
   const [user, setUser] = useState(()=>{ try { return JSON.parse(localStorage.getItem("user")); } catch { return null; }});
   const [token, setToken] = useState(()=>localStorage.getItem("token")||"");
@@ -445,10 +405,8 @@ export default function App() {
   const dashRef = useRef(null);
   const P = PALETTES[paletteKey];
   const accent = P.accent;
-
   function handleLogin(u) { setUser(u); setToken(localStorage.getItem("token")||""); }
   function handleLogout() { localStorage.clear(); setUser(null); setDb(null); setToken(""); }
-
   function handleData(data) {
     setDb(data);
     setCharts(data.config?.charts || []);
@@ -466,7 +424,6 @@ export default function App() {
     if (domainMap[data.domain]) setPaletteKey(domainMap[data.domain]);
     setPage("dashboard");
   }
-
   function filteredData() {
     if (!db) return [];
     let d = db.data;
@@ -475,7 +432,6 @@ export default function App() {
     if (searchText.trim()) { const q=searchText.toLowerCase(); d=d.filter(row=>Object.values(row).some(v=>String(v).toLowerCase().includes(q))); }
     return d;
   }
-
   async function exportPDF() {
     if (!dashRef.current) return alert("No dashboard to export");
     const canvas = await html2canvas(dashRef.current,{scale:1.5,useCORS:true,logging:false});
@@ -483,7 +439,6 @@ export default function App() {
     pdf.addImage(canvas.toDataURL("image/png"),"PNG",5,5,287,190);
     pdf.save(`${dashName}.pdf`);
   }
-
   function exportExcel() {
     const d = filteredData();
     if (!d.length) return alert("No data");
@@ -492,7 +447,6 @@ export default function App() {
     XLSX.utils.book_append_sheet(wb,ws,"Data");
     XLSX.writeFile(wb,`${dashName}.xlsx`);
   }
-
   function handleAICommand(action, { numCols=[], catCols=[] }={}) {
     if (!action) return;
     if (action.type === "add_widget") {
@@ -508,13 +462,11 @@ export default function App() {
       if (map[action.theme]) setPaletteKey(map[action.theme]);
     }
   }
-
   const data = filteredData();
   const numCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype?.includes("int")||v.dtype?.includes("float")).map(([k])=>k) : [];
   const catCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype==="object").map(([k])=>k) : [];
   const filterCols = db?.config?.filters || catCols.slice(0,4);
   const tableCols = db?.config?.table_columns || db?.columns?.slice(0,6) || [];
-
   const NAV = [
     { id:"dashboard", icon:"⊞", label:"Dashboard" },
     { id:"analytics", icon:"📊", label:"Analytics" },
@@ -522,13 +474,10 @@ export default function App() {
     { id:"export", icon:"⬇", label:"Export" },
     { id:"settings", icon:"⚙", label:"Settings" },
   ];
-
   if (!user) return <Login onLogin={handleLogin}/>;
-
   return (
     <div style={{ display:"flex", height:"100vh", overflow:"hidden", fontFamily:"Inter, -apple-system, sans-serif", background:P.bg }}>
       {showUpload && <UploadModal onClose={()=>setShowUpload(false)} onData={handleData} token={token}/>}
-
     {showWhatIf && (
   <WhatIf
     db={db}
@@ -539,7 +488,6 @@ export default function App() {
     onClose={() => setShowWhatIf(false)}
   />
 )}
-
       {/* SIDEBAR */}
       <div style={{ width:220, background:P.sidebar, display:"flex", flexDirection:"column", flexShrink:0, borderRight:"1px solid rgba(255,255,255,0.05)" }}>
         {/* Logo */}
@@ -552,7 +500,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
         {/* Navigation */}
         <nav style={{ padding:"12px 10px", flex:1 }}>
           {NAV.map(n=>(
@@ -567,7 +514,6 @@ export default function App() {
               <span style={{ fontSize:15 }}>{n.icon}</span>{n.label}
             </div>
           ))}
-
           {/* Connected Sources */}
           {sources.length > 0 && (
             <div style={{ marginTop:20 }}>
@@ -582,7 +528,6 @@ export default function App() {
             </div>
           )}
         </nav>
-
         {/* User */}
         <div style={{ padding:"14px 16px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
@@ -597,10 +542,8 @@ export default function App() {
           <button onClick={handleLogout} style={{ width:"100%", background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.08)", color:"rgba(255,255,255,0.35)", borderRadius:8, padding:"6px", fontSize:11, cursor:"pointer" }}>Sign out</button>
         </div>
       </div>
-
       {/* MAIN */}
       <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-
         {/* TOP BAR */}
         <div style={{ height:54, background:P.card, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 18px", borderBottom:`1px solid ${P.border}`, flexShrink:0, gap:10 }}>
           <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, minWidth:0 }}>
@@ -623,7 +566,6 @@ export default function App() {
               </span>
             ))}
           </div>
-
           {/* Page tabs */}
           {page==="dashboard" && db && (
             <div style={{ display:"flex", gap:3, alignItems:"center" }}>
@@ -638,7 +580,6 @@ export default function App() {
                 style={{ padding:"4px 8px", borderRadius:8, border:`1px dashed ${P.border}`, background:"transparent", color:P.sub, fontSize:12, cursor:"pointer" }}>+</button>
             </div>
           )}
-
           {/* Action buttons */}
           <div style={{ display:"flex", gap:6, alignItems:"center", flexShrink:0 }}>
             {db && page==="dashboard" && (
@@ -663,14 +604,11 @@ export default function App() {
             </button>
           </div>
         </div>
-
         {/* CONTENT */}
         <div style={{ flex:1, overflowY:"auto", background:P.bg }}>
-
           {/* DASHBOARD PAGE */}
           {page==="dashboard" && (
             <div ref={dashRef} style={{ padding:18 }}>
-
               {/* Empty State */}
               {!db && (
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"75vh" }}>
@@ -689,15 +627,12 @@ export default function App() {
                   </div>
                 </div>
               )}
-
               {db && (
                 <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
                   {/* Add Visual Panel */}
                   {showAddVisual && (
                     <AddVisualPanel onAdd={chart=>setCharts(p=>[...p,chart])} cols={db.columns} numCols={numCols} catCols={catCols} palette={P} onClose={()=>setShowAddVisual(false)}/>
                   )}
-
                   {/* Filters Bar */}
                   <div style={{ background:P.card, borderRadius:14, padding:"12px 16px", border:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
                     <span style={{ fontSize:10, fontWeight:700, color:P.sub, textTransform:"uppercase", letterSpacing:"0.6px", flexShrink:0 }}>FILTERS & PARAMETERS</span>
@@ -722,7 +657,6 @@ export default function App() {
                         style={{ background:"transparent", border:`1px solid ${P.border}`, borderRadius:8, padding:"4px 12px", fontSize:11, color:P.sub, cursor:"pointer" }}>Reset</button>
                     </div>
                   </div>
-
                   {/* AI Insights */}
                   {db.insights && (
                     <div style={{ background:P.card, borderRadius:14, border:`1px solid ${P.border}`, overflow:"hidden" }}>
@@ -747,7 +681,6 @@ export default function App() {
                       )}
                     </div>
                   )}
-
                   {/* KPI Cards */}
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))", gap:12 }}>
                     {kpis.map((kpi,i) => (
@@ -758,7 +691,6 @@ export default function App() {
                       + Add KPI
                     </button>
                   </div>
-
                   {/* Charts Grid */}
                   <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(360px,1fr))", gap:14 }}>
                     {charts.map((chart,i) => (
@@ -767,7 +699,6 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-
                   {/* Data Table */}
                   <div style={{ background:P.card, borderRadius:14, border:`1px solid ${P.border}`, overflow:"hidden" }}>
                     <div style={{ padding:"13px 16px", borderBottom:`1px solid ${P.border}`, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -808,7 +739,6 @@ export default function App() {
                       </div>
                     )}
                   </div>
-
                   {/* Stats Summary */}
                   {db.num_stats && Object.keys(db.num_stats).length>0 && (
                     <div style={{ background:P.card, borderRadius:14, border:`1px solid ${P.border}`, overflow:"hidden" }}>
@@ -844,7 +774,6 @@ export default function App() {
               )}
             </div>
           )}
-
           {/* ANALYTICS PAGE */}
           {page==="analytics" && (
             <div style={{ padding:18 }}>
@@ -859,7 +788,6 @@ export default function App() {
               }
             </div>
           )}
-
           {/* MY FILES */}
           {page==="files" && (
             <div style={{ padding:18 }}>
@@ -886,7 +814,6 @@ export default function App() {
               }
             </div>
           )}
-
           {/* EXPORT */}
           {page==="export" && (
             <div style={{ padding:18, maxWidth:580 }}>
@@ -921,7 +848,6 @@ export default function App() {
               )}
             </div>
           )}
-
           {/* SETTINGS */}
           {page==="settings" && (
             <div style={{ padding:18, maxWidth:580 }}>
@@ -960,7 +886,6 @@ export default function App() {
             </div>
           )}
         </div>
-
         {/* BOTTOM PAGE TABS */}
         {db && page==="dashboard" && (
           <div style={{ height:36, background:P.card, borderTop:`1px solid ${P.border}`, display:"flex", alignItems:"center", padding:"0 10px", gap:3, flexShrink:0 }}>
@@ -981,7 +906,6 @@ export default function App() {
           </div>
         )}
       </div>
-
       {/* AI CHATBOT */}
       <AIChatbot db={db} accent={accent} palette={P} onCommand={handleAICommand}/>
     </div>
