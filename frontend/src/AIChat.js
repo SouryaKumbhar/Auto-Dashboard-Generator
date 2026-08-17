@@ -1,8 +1,7 @@
+
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
-
 const BACKEND = "https://autodash-backend-oqq2.onrender.com";
-
 export default function AIChat({ db, onCommand, accent }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -11,35 +10,28 @@ export default function AIChat({ db, onCommand, accent }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior:"smooth" });
   }, [messages]);
-
   async function send() {
     if (!input.trim() || loading) return;
     const userMsg = input.trim();
     setInput("");
     setMessages(p => [...p, { role:"user", content:userMsg }]);
     setLoading(true);
-
     try {
       const token = localStorage.getItem("token");
       const columns = db?.columns || [];
       const domain = db?.domain || "general";
-
       const res = await axios.post(`${BACKEND}/ai-chat`, {
         message: userMsg,
         columns,
         domain,
         context: "dashboard builder"
       }, { headers:{ Authorization:`Bearer ${token}` } });
-
       const reply = res.data.reply;
       const action = res.data.action;
-
       setMessages(p => [...p, { role:"assistant", content:reply }]);
-
       if (action) {
         onCommand(action);
       }
@@ -48,7 +40,6 @@ export default function AIChat({ db, onCommand, accent }) {
     }
     setLoading(false);
   }
-
   return (
     <>
       {/* Chat Button */}
@@ -64,7 +55,6 @@ export default function AIChat({ db, onCommand, accent }) {
         }}>
         {open ? "✕" : "🤖"}
       </button>
-
       {/* Chat Window */}
       {open && (
         <div style={{
@@ -79,7 +69,6 @@ export default function AIChat({ db, onCommand, accent }) {
             <div style={{ fontSize:14, fontWeight:600 }}>🤖 AI Dashboard Assistant</div>
             <div style={{ fontSize:11, opacity:0.8, marginTop:2 }}>Ask me to modify your dashboard</div>
           </div>
-
           {/* Messages */}
           <div style={{ flex:1, overflowY:"auto", padding:12, display:"flex", flexDirection:"column", gap:8 }}>
             {messages.map((msg, i) => (
@@ -107,7 +96,6 @@ export default function AIChat({ db, onCommand, accent }) {
             )}
             <div ref={bottomRef}/>
           </div>
-
           {/* Input */}
           <div style={{ padding:"10px 12px", borderTop:"0.5px solid #eee", display:"flex", gap:8 }}>
             <input

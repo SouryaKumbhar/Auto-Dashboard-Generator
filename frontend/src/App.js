@@ -1,4 +1,5 @@
-
+import AddKPIPanel from "./AddKPIPanel";
+import AddChartPanel from "./AddChartPanel";
 import WhatIf from "./WhatIf";
 import { useState, useRef } from "react";
 import axios from "axios";
@@ -550,89 +551,68 @@ function ChartCard({ chart, data, palette, onRemove, index }) {
     </div>
   );
 }
-function AddVisualPanel({ onAdd, cols, numCols, catCols, palette, onClose, existingCount }) {
-  const [xCol, setXCol] = useState(catCols[0]||cols[0]||"");
-  const [yCol, setYCol] = useState(numCols[0]||cols[0]||"");
-  const [title, setTitle] = useState("");
-  const allCols = [...new Set([...catCols,...numCols])];
-  const accent = palette.accent;
-  const inp = { width:"100%", padding:"9px 12px", borderRadius:10, border:`1px solid ${palette.border}`, fontSize:13, outline:"none", background:palette.bg, color:palette.text };
-  const lbl = { fontSize:11, color:palette.sub, display:"block", marginBottom:5, fontWeight:600, textTransform:"uppercase", letterSpacing:"0.4px" };
-  // Auto-assign type by rotation so new charts are varied
-  const AUTO_TYPES = ["gradientBar","smoothArea","donut","glowLine","scatter","radar"];
-  const autoType = AUTO_TYPES[(existingCount||0) % AUTO_TYPES.length];
-  const TYPE_LABEL = { gradientBar:"Bar", smoothArea:"Area", donut:"Donut", glowLine:"Line", scatter:"Scatter", radar:"Radar" };
-  return (
-    <div style={{ background:palette.card, borderRadius:16, border:`1px solid ${accent}40`, boxShadow:`0 0 0 1px ${accent}20`, padding:20, marginBottom:16 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ fontSize:14, fontWeight:700, color:palette.text }}>+ Add Visual</div>
-          <span style={{ fontSize:10, background:`${accent}15`, color:accent, border:`1px solid ${accent}25`, borderRadius:6, padding:"2px 8px", fontWeight:700 }}>
-            Auto · {TYPE_LABEL[autoType]}
-          </span>
-        </div>
-        <button onClick={onClose} style={{ background:"none", border:"none", color:palette.sub, fontSize:18, cursor:"pointer", opacity:0.6 }}>✕</button>
-      </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
-        <div>
-          <label style={lbl}>X Axis / Category</label>
-          <select value={xCol} onChange={e=>setXCol(e.target.value)} style={inp}>
-            {allCols.map(c=><option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={lbl}>Y Axis / Metric</label>
-          <select value={yCol} onChange={e=>setYCol(e.target.value)} style={inp}>
-            {allCols.map(c=><option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-      </div>
-      <div style={{ marginBottom:16 }}>
-        <label style={lbl}>Chart Title</label>
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder={`${yCol} by ${xCol}`} style={inp}/>
-      </div>
-      <button onClick={()=>{ onAdd({ id:`c${Date.now()}`, type:autoType, title:title||`${yCol} by ${xCol}`, x_column:xCol, y_column:yCol }); onClose(); }}
-        style={{ background:`linear-gradient(135deg,${accent},#19B6FF)`, color:"#fff", border:"none", borderRadius:10, padding:"10px 24px", fontSize:13, fontWeight:600, cursor:"pointer", boxShadow:`0 4px 20px ${accent}40` }}>
-        Add to Dashboard
-      </button>
-    </div>
-  );
-}
-function AIChatbot({ db, accent, palette, onCommand }) {
+function AIChatbot({ db, onCommand, charts, kpis, accent, palette }) {
   const [open, setOpen] = useState(false);
   const [msgs, setMsgs] = useState([{ role:"ai", text:"Hi! I'm your AI assistant. Try: 'Add a bar chart' or 'Change theme to dark'" }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
   const quickCommands = [
-    "Add a bar chart", "Add a line chart", "Add a pie chart",
-    "Change theme to dark", "Change theme to finance", "Add a KPI card"
-  ];
+  "Add a bar chart",
+  "Add a line chart",
+  "Add a pie chart",
+  "Add a KPI card",
+  "Remove last chart",
+  "Remove last KPI",
+];
   async function send(text) {
-    const msg = text || input.trim();
-    if (!msg) return;
-    setInput("");
-    setMsgs(p=>[...p, { role:"user", text:msg }]);
-    setLoading(true);
-    try {
-      const columns = db?.columns || [];
-      const numCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype?.includes("int")||v.dtype?.includes("float")).map(([k])=>k) : [];
-      const catCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype==="object").map(([k])=>k) : [];
-      const res = await api.post("/ai-chat", {
-        message: msg,
-        columns,
-        domain: db?.domain || "general"
-      });
-      const reply = res.data.reply || "Done!";
-      const action = res.data.action;
-      setMsgs(p=>[...p, { role:"ai", text:reply }]);
-      if (action && onCommand) onCommand(action, { numCols, catCols });
-    } catch {
-      setMsgs(p=>[...p, { role:"ai", text:"I'll help! Try asking me to add charts, change themes, or modify the dashboard." }]);
+  const msg = text || input.trim();
+  if (!msg) return;
+  setInput("");
+  setMsgs(p => [...p, { role: "user", text: msg }]);
+  setLoading(true);
+
+  try {
+    const res = await api.post("/ai-chat", {
+      message: msg,
+      columns: db?.columns || [],
+      domain: db?.domain || "general"
+    });
+
+    const reply = res.data.reply || "Done!";
+    const action = res.data.action;
+
+    setMsgs(p => [...p, { role: "ai", text: reply }]);
+
+    if (action && action.type && action.type !== "none") {
+      onCommand(action);
+      // Confirm what was done
+      const confirmMsg = action.type === "add_chart"
+        ? `✅ Added ${action.chart_type} chart: "${action.title}"`
+        : action.type === "add_kpi"
+        ? `✅ Added KPI: "${action.kpi_label}"`
+        : action.type === "remove_chart"
+        ? `✅ Removed the last chart`
+        : action.type === "remove_kpi"
+        ? `✅ Removed the last KPI`
+        : null;
+
+      if (confirmMsg) {
+        setTimeout(() => {
+          setMsgs(p => [...p, { role: "ai", text: confirmMsg }]);
+        }, 500);
+      }
     }
-    setLoading(false);
-    setTimeout(()=>bottomRef.current?.scrollIntoView({ behavior:"smooth" }), 100);
+  } catch (err) {
+    setMsgs(p => [...p, {
+      role: "ai",
+      text: "Sorry, I had trouble connecting. Make sure the backend is running."
+    }]);
   }
+
+  setLoading(false);
+  setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+}
   return (
     <>
       <button onClick={()=>setOpen(o=>!o)} style={{
@@ -700,7 +680,6 @@ export default function App() {
   const [page, setPage] = useState("dashboard");
   const [db, setDb] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
-  const [showAddVisual, setShowAddVisual] = useState(false);
   const [showWhatIf, setShowWhatIf] = useState(false);
   const [filters, setFilters] = useState({});
   const [drills, setDrills] = useState([]);
@@ -715,6 +694,8 @@ export default function App() {
   const [showInsights, setShowInsights] = useState(true);
   const [sidebarHover, setSidebarHover] = useState(false);
   const [topbarHover, setTopbarHover] = useState(false);
+  const [showAddKPI, setShowAddKPI] = useState(false);
+  const [showAddChart, setShowAddChart] = useState(false);
   const dashRef = useRef(null);
   const P = P_DARK;
   const accent = P.accent;
@@ -758,18 +739,40 @@ export default function App() {
     XLSX.utils.book_append_sheet(wb,ws,"Data");
     XLSX.writeFile(wb,`${dashName}.xlsx`);
   }
-  function handleAICommand(action, { numCols=[], catCols=[] }={}) {
-    if (!action) return;
-    if (action.type === "add_widget") {
-      setCharts(p=>[...p,{
-        id:`c${Date.now()}`, type:action.widget_type||"bar",
-        title:action.title||"New Chart",
-        x_column:action.x_column||catCols[0]||"",
-        y_column:action.y_column||numCols[0]||""
-      }]);
-    }
-    // theme switching removed — dark is the only theme
+  function handleAICommand(action) {
+  if (!action || action.type === "none") return;
+  const colEntries = db?.col_info
+    ? (Array.isArray(db.col_info)
+        ? db.col_info.map(c => [c.name, c])
+        : Object.entries(db.col_info))
+    : [];
+  const numCols = colEntries
+    .filter(([,v]) => String(v?.dtype ?? v?.type ?? "").includes("int") || String(v?.dtype ?? v?.type ?? "").includes("float"))
+    .map(([k,v]) => v?.name || k);
+  const catCols = colEntries
+    .filter(([,v]) => String(v?.dtype ?? v?.type ?? "") === "object")
+    .map(([k,v]) => v?.name || k);
+  if (action.type==="add_chart") {
+    setCharts(p=>[...p,{
+      id:`c${Date.now()}`,
+      type:action.chart_type||"bar",
+      title:action.title||`New ${action.chart_type||"bar"} chart`,
+      x_column:action.x_column||catCols[0]||"",
+      y_column:action.y_column||numCols[0]||""
+    }]);
   }
+  if (action.type==="add_kpi") {
+    setKpis(p=>[...p,{
+      label:action.kpi_label||"New KPI",
+      column:action.kpi_column||numCols[0]||"",
+      aggregation:action.kpi_aggregation||"sum",
+      prefix:"", suffix:""
+    }]);
+  }
+  if (action.type==="remove_chart") setCharts(p=>p.slice(0,-1));
+  if (action.type==="remove_kpi") setKpis(p=>p.slice(0,-1));
+}
+
   const data = filteredData();
   const numCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype?.includes("int")||v.dtype?.includes("float")).map(([k])=>k) : [];
   const catCols = db?.col_info ? Object.entries(db.col_info).filter(([,v])=>v.dtype==="object").map(([k])=>k) : [];
@@ -789,6 +792,20 @@ export default function App() {
       {showWhatIf && (
         <WhatIf db={db} data={data} kpis={kpis} accent={accent} palette={P} onClose={() => setShowWhatIf(false)}/>
       )}
+      {showAddKPI && (
+  <AddKPIPanel
+    db={db}
+    onAdd={kpi => setKpis(p => [...p, kpi])}
+    onClose={() => setShowAddKPI(false)}
+  />
+)}
+{showAddChart && (
+  <AddChartPanel
+    db={db}
+    onAdd={chart => setCharts(p => [...p, chart])}
+    onClose={() => setShowAddChart(false)}
+  />
+)}
 
       {/* SIDEBAR HOVER TRIGGER ZONE — invisible 8px strip on the left edge */}
       <div
@@ -916,12 +933,40 @@ export default function App() {
           {/* Action buttons */}
           <div style={{ display:"flex", gap:6, alignItems:"center", flexShrink:0 }}>
             {db && page==="dashboard" && (
-              <button onClick={()=>setShowAddVisual(s=>!s)}
-                style={{ background:showAddVisual?`${accent}20`:`${accent}15`, color:accent, border:`1px solid ${accent}30`, borderRadius:9, padding:"6px 14px", fontSize:12, cursor:"pointer", fontWeight:600 }}>
-                {showAddVisual?"✕ Cancel":"+ Visual"}
-                
-              </button>
-            )}
+  <>
+    <button
+      onClick={() => setShowAddChart(true)}
+      style={{
+        background:"#1F2937",
+        color:"#3B82F6",
+        border:"1px solid #2D3547",
+        borderRadius:8,
+        padding:"5px 12px",
+        fontSize:11,
+        cursor:"pointer",
+        fontWeight:600
+      }}
+    >
+      + Visual
+    </button>
+
+    <button
+      onClick={() => setShowAddKPI(true)}
+      style={{
+        background:"#1F2937",
+        color:"#10B981",
+        border:"1px solid #2D3547",
+        borderRadius:8,
+        padding:"5px 12px",
+        fontSize:11,
+        cursor:"pointer",
+        fontWeight:600
+      }}
+    >
+      + KPI
+    </button>
+  </>
+)}
             {db && page === "dashboard" && (
               <button onClick={() => setShowWhatIf(true)}
                 style={{ background:"rgba(245,158,11,0.12)", color:"#FCD34D", border:"1px solid rgba(245,158,11,0.25)", borderRadius:9, padding:"6px 14px", fontSize:12, cursor:"pointer", fontWeight:600 }}>
@@ -986,10 +1031,6 @@ export default function App() {
               )}
               {db && (
                 <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-                  {/* Add Visual Panel */}
-                  {showAddVisual && (
-                    <AddVisualPanel onAdd={chart=>setCharts(p=>[...p,chart])} cols={db.columns} numCols={numCols} catCols={catCols} palette={P} onClose={()=>setShowAddVisual(false)} existingCount={charts.length}/>
-                  )}
                   {/* Filters Bar */}
                   <div style={{ background:P.card, borderRadius:14, padding:"12px 16px", border:`1px solid ${P.border}`, display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
                     <span style={{ fontSize:10, fontWeight:700, color:P.sub, textTransform:"uppercase", letterSpacing:"0.6px", flexShrink:0 }}>FILTERS & PARAMETERS</span>
@@ -1312,7 +1353,7 @@ export default function App() {
         )}
       </div>
       {/* AI CHATBOT */}
-      <AIChatbot db={db} accent={accent} palette={P} onCommand={handleAICommand}/>
+      <AIChatbot db={db} onCommand={handleAICommand} charts={charts} kpis={kpis} accent={accent} palette={P}/>
     </div>
   );
 }
